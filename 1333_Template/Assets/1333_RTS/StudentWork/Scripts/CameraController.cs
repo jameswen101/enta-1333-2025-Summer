@@ -22,7 +22,7 @@ public class CameraController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKey(KeyCode.W) || Input.mousePosition.y >= Screen.height - panBorderThickness) // forward (Z+)
+        if (Input.GetKey(KeyCode.W)) // forward (Z+)
             transform.position += transform.forward * panSpeed * Time.deltaTime;
 
         if (Input.GetKey(KeyCode.S)) // backward (Z-)
