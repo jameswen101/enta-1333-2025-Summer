@@ -108,7 +108,7 @@ public class GridManager : MonoBehaviour
             for (int i = 0; i < FinalPath.Count - 1; i++)    
             {        
                 Gizmos.DrawLine(FinalPath[i], FinalPath[i + 1]);
-                Debug.Log($"Node visited: ({FinalPath[i].x}, {FinalPath[i].z})");
+                Debug.Log($"Node visited: ({FinalPath[i].x}, {FinalPath[i].z})"); //make sure Debug.Log ends once destination reached
             }
         }
     }
