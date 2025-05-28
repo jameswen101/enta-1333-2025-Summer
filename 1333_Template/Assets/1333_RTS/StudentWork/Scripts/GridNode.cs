@@ -1,18 +1,17 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class GridNode : MonoBehaviour
+[Serializable]
+public struct GridNode 
 {
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+    public string Name; //grid index
+    public Vector3 WorldPosition;
+    public bool Walkable;
+    public int Weight;
+    public bool isWall;
+    public int fCost;
+    public int gCost;
+    public int hCost;
 }
