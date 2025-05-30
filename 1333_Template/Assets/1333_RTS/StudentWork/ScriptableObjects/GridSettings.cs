@@ -9,6 +9,9 @@ public class GridSettings : ScriptableObject
     [SerializeField] private int gridSizeY = 10;
     [SerializeField] private float nodeSize = 1f;
     [SerializeField] private bool useXZPlane = true;
+    [SerializeField] private TerrainType defaultTerrainType;
+    [SerializeField] private TerrainType[] terrainTypes;
+    public TerrainType DefaultTerrainType => defaultTerrainType;
 
     public int GridSizeX => gridSizeX;
     public int GridSizeY => gridSizeY;

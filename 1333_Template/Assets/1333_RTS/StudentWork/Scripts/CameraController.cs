@@ -11,12 +11,13 @@ public class CameraController : MonoBehaviour
     public float minY = 20f;
     public float maxY = 120f;
     Vector3 pos;
-    public Camera cam = Camera.main;
+    public Camera cam;
 
     // Start is called before the first frame update
     void Start()
     {
         pos = transform.position;
+        cam = Camera.main;
     }
 
     // Update is called once per frame

@@ -9,9 +9,11 @@ public struct GridNode
     public string Name; //grid index
     public Vector3 WorldPosition;
     public bool Walkable;
+    public TerrainType TerrainType;
     public int Weight;
     public bool isWall;
     public int fCost;
     public int gCost;
     public int hCost;
+    public Color GizmoColor;
 }

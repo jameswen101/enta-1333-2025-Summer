@@ -8,8 +8,10 @@ public class GridTest : MonoBehaviour
     [Header("Required References")]
     [SerializeField] private GridManager gridManager;
     [SerializeField] private PathFinder pathfinder;
-    [SerializeField] private Transform startMarker;
-    [SerializeField] private Transform endMarker;
+    //[SerializeField] private 
+    public Transform startMarker;
+    //[SerializeField] private
+    public Transform endMarker;
     [SerializeField] private LineRenderer pathLine;
 
     [Header("Randomization Settings")] 

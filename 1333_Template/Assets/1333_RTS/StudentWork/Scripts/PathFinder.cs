@@ -6,13 +6,16 @@ using static UnityEditor.PlayerSettings;
 public class PathFinder : MonoBehaviour
 {
     [SerializeField] private GridManager gridManager;
-    public enum PathfindingType
+    [SerializeField] private DijkstraPathfinder dijkstraPathfinder;
+    [SerializeField] private AStarPathfinder aStarPathfinder;
+    [SerializeField] private GameManager gameManager;
+    public enum PathFindingStyle
     {
-        Unweighted,
-        Weighted,
-        BruteForce,
-        Naive,
+        Dijkstra,
+        AStar
     }
+
+    [SerializeField] private PathFindingStyle pathfindingToUse = PathFindingStyle.AStar;
 
     public GridNode StartNode;
     public GridNode EndNode;
@@ -25,7 +28,6 @@ public class PathFinder : MonoBehaviour
 
 
     [Header("Pathfinding Settings")]
-    [SerializeField] private PathfindingType pathfindingType = PathfindingType.Unweighted;
     [SerializeField, Range(0, 100)] private int framesPerStep = 10;
     [SerializeField] private bool visualizePathfinding = true;
 
@@ -45,6 +47,12 @@ public class PathFinder : MonoBehaviour
     [SerializeField] private bool useSeededRandom = true;
     [SerializeField] private float minWeight = 1f;
     [SerializeField] private float maxWeight = 10f;
+
+    [Header("Visualization")]
+    [SerializeField] private bool drawLastPathGizmos = true;
+    [SerializeField] private Color pathGizmoColor = Color.cyan;
+
+    private List<GridNode> lastPath = new();
 
     /*
     protected void FindPath(GridNode StartNode, GridNode EndNode)
@@ -151,6 +159,27 @@ public class PathFinder : MonoBehaviour
         return lowest * 14 + horizontalMovesRequired * 10; //should it be sqrt(200) instead?
     }
 
+    public List<GridNode> FindPath(GridNode start, GridNode end, int unitWidth = 1, int unitHeight = 1)
+    {
+        List<GridNode> path;
+        switch (pathfindingToUse)
+        {
+            case PathFindingStyle.Dijkstra: //if Dijkstra is selected
 
+                    path = dijkstraPathfinder.FindPath(gridManager, start, end, unitWidth, unitHeight);
+                break;
+            case PathFindingStyle.AStar:
+                    path = aStarPathfinder.FindPath(gridManager, start, end, unitWidth, unitHeight);
+                break;
+            default:
+                path = new List<GridNode>();
+                break;
+        }
+        if(drawLastPathGizmos)
+        {
+            lastPath = path;
+        }
+        return path;
+    }
 
 }

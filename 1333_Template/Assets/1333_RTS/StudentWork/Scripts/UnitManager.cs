@@ -5,10 +5,12 @@ using UnityEngine;
 
 public class UnitManager : MonoBehaviour
 {
-    public GridTest gridTest;
-    public GridNode startNode;
-    public GridNode endNode;
+    public GridNode spawnNode;
     public GameObject dummyPrefab;
+    public GridManager gridManager;
+    private Dictionary<int, ArmyManager> armyManager;
+    public ArmyManager PlayerArmy => armyManager[0];
+    public Vector3 spawnLocation;
     // Start is called before the first frame update
     void Start()
     {
@@ -21,11 +23,28 @@ public class UnitManager : MonoBehaviour
         
     }
 
-    public void SpawnDummyUnit()
+    public void SpawnDummyUnit(Transform parent)
     {
+        if (!gridManager.IsInitialized)
+        {
+            Debug.LogError("Grid not initialized!");
+            return;
+        }
         //spawn a cube, just need a way to know where the start is + where the end is
-        GameObject unit = Instantiate(dummyPrefab, startNode.WorldPosition, Quaternion.identity); //add one of those NPC assets here?
+        int randomX = Random.Range(0, gridManager.GridSettings.GridSizeX);
+        int randomY = Random.Range(0, gridManager.GridSettings.GridSizeY);
+        spawnNode = gridManager.GetNode(randomX, randomY);
+        Debug.Log($"Dummy unit spawned at ({randomX}, {randomY}) - World Position: {spawnNode.WorldPosition}");
+        //instantiate dummy unit prefab here in future
+        GameObject dummy = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        dummy.transform.position = spawnNode.WorldPosition;
+        //GameObject unit = Instantiate(dummyPrefab, startNode.WorldPosition, Quaternion.identity); //add one of those NPC assets here?
         //UnitController controller = unit.GetComponent<UnitController>();
         //controller.MoveTo(endNode); // start pathfinding
+    }
+
+    public GridNode NodeSpawned(Transform parent)
+    {
+        return spawnNode;
     }
 }
