@@ -34,16 +34,17 @@ public class ArmyPathfindingTester : MonoBehaviour
         for (int i = 0; i < armyCompositions.Count; i++)
         {
             ArmyManager army = new ArmyManager { ArmyID = i + 1, GridManager = gridManager };
-            //SpawnArmyUnits(army, armyCompositions[i]);  //currently error
+            SpawnArmyUnits(army, armyCompositions[i]);  
             armies.Add(army);
+            //UpdateArmyUnits
         }
     }
-    /*
-    private void SpawnArmyUnits(ArmyManager army, ArmyComposition composition)
+ 
+    private void SpawnArmyUnits(ArmyManager army, ArmyComposition composition) //army is the army you want to save units you spawn stuff into
     {
-        //ArmyComposition.UnitEntry spawnedUnit = new ArmyComposition.UnitEntry();
+        ArmyComposition.UnitEntry spawnedUnit = new ArmyComposition.UnitEntry(); //composition is the stuff you want to spawn
 
-        foreach (var entry in composition.units) //currently error
+        foreach (var entry in composition.entries) 
         {
             for (int i = 0; i < entry.count; i++)
             {
@@ -51,8 +52,8 @@ public class ArmyPathfindingTester : MonoBehaviour
                 int maxAttempts = 1000;
                 Vector3 spawnPos = Vector3.zero;
                 bool found = false;
-                int unitWidth = entry.unitTypePrefab.unitType.Width;
-                int unitHeight = entry.unitTypePrefab.unitType.Height;
+                int unitWidth = entry.unitType.Width;
+                int unitHeight = entry.unitType.Height;
                 while (!found && attempts < maxAttempts)
                 {
                     int x = Random.Range(0, gridManager.GridSettings.GridSizeX - unitWidth + 1);
@@ -69,12 +70,12 @@ public class ArmyPathfindingTester : MonoBehaviour
 
                 if (!found)
                 {
-                    Debug.LogWarning($"Failed to find valid spawn position for unit {entry.unitTypePrefab.unitType.name}.");
+                    Debug.LogWarning($"Failed to find valid spawn position for unit {entry.unitType.name}.");
                     continue;
                 }
-                GameObject go = Instantiate(entry.unitTypePrefab.prefab, spawnPos, Quaternion.identity);
+                GameObject go = Instantiate(entry.unitType.unitPrefab, spawnPos, Quaternion.identity);
                 UnitInstance unit = go.GetComponent<UnitInstance>();
-                unit.Initialize(pathFinder, entry.unitTypePrefab.unitType);
+                unit.Initialize(pathFinder, entry.unitType, gridManager, aStarPathfinder);
                 army.Units.Add(unit);
                 unitStates[unit] = UnitState.Patrol;
                 
@@ -87,9 +88,8 @@ public class ArmyPathfindingTester : MonoBehaviour
                 patrolTargetIndex[unit] = 0;
             }
         }
-
     }
-*/
+
     // Update is called once per frame
     void Update()
     {
@@ -102,21 +102,24 @@ public class ArmyPathfindingTester : MonoBehaviour
                 if (i == j) continue;
                 enemyUnits.AddRange(armies[j].Units.Select(x => x as UnitInstance));
             }
+            UpdateArmyUnits(ownArmy, enemyUnits);
         }
     }
 
-    private void UpdateArmyUnits(ArmyManager ownArmy, List<UnitInstance> enemyUnits)
+    private void UpdateArmyUnits(ArmyManager ownArmy, List<UnitInstance> enemyUnits) //enemyUnits also used in Update
     {
         foreach (UnitInstance unit in ownArmy.Units)
         {
             if(unit == null) continue;
-            UnitState state = unitStates[unit];
+            unit.SetTarget(GetRandomPatrolPoint(unit.transform.position, unit.Width, unit.Height)); //calling GetRandomPatrolPoint for each unit
+
             /*
+            UnitState state = unitStates[unit];
                         switch (state) //currently error
                         {
 
                             case UnitState.Patrol:
-
+                    
                                 UnitInstance enemy = FindNearestEnemy(unit, enemyUnits);
                                 if (enemy != null)
                                 {
@@ -155,8 +158,57 @@ public class ArmyPathfindingTester : MonoBehaviour
         }
     }
 
-    private void PatrolBehavior(UnitInstance unit)
+    public void Initialize()
     {
+        armies.Clear();
+        for (int i = 0; i < armyCompositions.Count; i++)
+        {
+            ArmyManager army = new ArmyManager { ArmyID = i + 1, GridManager = gridManager };
+            SpawnArmyUnits(army, armyCompositions[i]);
+            armies.Add(army);
+        }
+    }
 
+    public bool IsRegionWalkable(int x, int y, int unitWidth, int unitHeight)
+    {
+        return true;
+    }
+
+    public Vector3 GetRandomPatrolPoint(Vector3 origin, int unitWidth, int unitHeight)
+    {
+        /*
+        GridNode node = gridManager.GetNodeFromWorldPosition(origin);
+        float nodeSize = gridManager.GridSettings.NodeSize;
+        int nodeX = Mathf.RoundToInt(node.WorldPosition.x);
+        int nodeY = 
+        */
+        int randomX = Random.Range(0, gridManager.GridSettings.GridSizeX);
+        int randomY = Random.Range(0, gridManager.GridSettings.GridSizeY);
+        return gridManager.GetNode(randomX, randomY).WorldPosition;
+    }
+
+    // Draws each unit's current path as a gizmo in a unique color per army.
+    private void OnDrawGizmos()
+    {
+        // Loop through all armies.
+        for (int armyIdx = 0; armyIdx < armies.Count; armyIdx++)
+        {
+            ArmyManager army = armies[armyIdx];
+            // Pick a color for this army.
+            Color color = ArmyColors[armyIdx % ArmyColors.Length];
+            // Loop through all units in the army.
+            foreach (UnitInstance unit in army.Units)
+            {
+                if (unit == null || unit.CurrentPath == null || unit.CurrentPath.Count < 2)
+                    continue;
+                // Set gizmo color for this army.
+                Gizmos.color = color;
+                // Draw lines between each node in the path.
+                for (int i = 0; i < unit.CurrentPath.Count - 1; i++)
+                {
+                    Gizmos.DrawLine(unit.CurrentPath[i].WorldPosition, unit.CurrentPath[i + 1].WorldPosition);
+                }
+            }
+        }
     }
 }

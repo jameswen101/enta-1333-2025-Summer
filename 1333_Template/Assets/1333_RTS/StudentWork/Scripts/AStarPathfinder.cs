@@ -1,46 +1,58 @@
 using System.Collections;
 using System.Collections.Generic;
-using NUnit;
-using UnityEditor.Experimental.GraphView;
+//using NUnit;
+//using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 public class AStarPathfinder : PathfindingAlgorithm
 {
     //public List<GridNode> FinalPath = new List<GridNode>();
-    List<GridNode> path = new List<GridNode>();
     [SerializeField] private GridManager gridManager;
     [SerializeField] private Color finalPathColor = Color.cyan;
     [SerializeField] private GameManager gameManager;
     public override List<GridNode> FindPath(GridManager gridManager, GridNode start, GridNode end, int unitWidth, int unitHeight)
     {
+        //nodes to explore
         List<GridNode> openSet = new List<GridNode>(); //should we also have a closedSet?
+        List<GridNode> closedSet = new List<GridNode>();
         Dictionary<GridNode, int> costSoFar = new Dictionary<GridNode, int>(); //gCost (starts at 0)
         Dictionary<GridNode, int> estimatedTotalCost = new Dictionary<GridNode, int>(); //fCost; costSoFar + Heuristic = estimatedTotalCost?
-        Dictionary<GridNode, GridNode> cameFrom = new Dictionary<GridNode, GridNode>(); 
+        Dictionary<GridNode, GridNode> cameFrom = new Dictionary<GridNode, GridNode>(); //path reconstruction
         openSet.Add(start);
         costSoFar[start] = 0;
         estimatedTotalCost[start] = Heuristic(start, end);
-        cameFrom[start] = start;
+        cameFrom[start] = start; //start node has no parent or node preceding it
+
+        Debug.Log($"Finding path from {start} to {end}");
 
         while (openSet.Count > 0) 
         {
+            //find code with lowest f-score
             GridNode current = openSet[0];
-            foreach (GridNode node in openSet)
+            foreach (GridNode node in openSet) //does openSet only have 1 node?
             {
-                if (estimatedTotalCost[node] < estimatedTotalCost[current])
+                if (estimatedTotalCost[node] < estimatedTotalCost[current] ||
+   (estimatedTotalCost[node] == estimatedTotalCost[current] &&
+    Heuristic(node, end) < Heuristic(current, end)))
                 {
                     current = node;
                 }
             }
-            if (current.Equals(end))
+            if (current.Equals(end)) //when end node reached, stop searching
             {
                 break;
             }
-            openSet.Remove(current);
+            openSet.Remove(current); //remove current node from nodes to explore
+            if (closedSet.Contains(current)) continue;
+            closedSet.Add(current);
+            //get neighbors
+            var neighbors = GetNeighbors(gridManager, current);
                 for (int i = 0; i < GetNeighbors(gridManager, current).Count; i++)
             {
-                GridNode neighbor = GetNeighbors(gridManager, current)[i];
-                if (!IsAreaWalkable(gridManager, neighbor, unitWidth, unitHeight)) //IsAreaWalkable is a bool function
+                GridNode neighbor = neighbors[i];
+
+                bool isWalkable = IsAreaWalkable(gridManager, neighbor, unitWidth, unitHeight);
+                if (!isWalkable) //IsAreaWalkable is a bool function //misinterprets whether node is walkable or not
                     continue;
 
                 int newCost = costSoFar[current] + neighbor.Weight;
@@ -58,14 +70,15 @@ public class AStarPathfinder : PathfindingAlgorithm
 
             }
         }
-        
+
+        List<GridNode> path = new List<GridNode>(); //Makes new list every time, otherwise old data can't be cleared
         GridNode pathNode = end;
-        if (cameFrom.ContainsKey(end))
+        if (!cameFrom.ContainsKey(end))
             return path;
-        while (!pathNode.Equals(start))
+        while (!pathNode.Equals(start)) //not the 1st node
         {
-            path.Add(pathNode);
-            pathNode = cameFrom[pathNode];
+            path.Add(pathNode); 
+            pathNode = cameFrom[pathNode]; //key not found
         }
         path.Add(start);
         path.Reverse();
@@ -74,8 +87,10 @@ public class AStarPathfinder : PathfindingAlgorithm
 
     public override List<GridNode> FindPath(GridManager gridManager, Vector3 start, Vector3 end, int unitWidth, int unitHeight)
     {
-        //add a* code here
-        return FindPath(gridManager, start, end, 1, 1);
+        GridNode startNode = FindClosestNode(gridManager, start);
+        GridNode endNode = FindClosestNode(gridManager, end);
+        return FindPath(gridManager, startNode, endNode, unitWidth, unitHeight);
+
     }
 
     private List<GridNode> GetNeighbors(GridManager gridManager, GridNode node)
@@ -102,10 +117,10 @@ public class AStarPathfinder : PathfindingAlgorithm
         {
             for (int dy = 0; dy < height; dy++)
             {
-                if (x + dx < 0 || y + dy < 0 || x + dx >= grid.GridSettings.GridSizeX || y + dy >= grid.GridSettings.GridSizeY)
-                {
+                if (x + dx < 0 || x + dx >= grid.GridSettings.GridSizeX || y + dy < 0 || y + dy >= grid.GridSettings.GridSizeY)
                     return false;
-                }
+                if (!grid.GetNode(x + dx, y + dy).Walkable)
+                    return false;
             }
         }
         return true;
@@ -125,46 +140,10 @@ public class AStarPathfinder : PathfindingAlgorithm
         return Mathf.RoundToInt(dx + dz);
     }
 
-
-    public void OnDrawGizmos()
-    {
-        /*
-        List<GridNode> FinalPath = FindPath(gridManager, start, end, int unitWidth, int unitHeight);
-        if (FinalPath != null && FinalPath.Count > 1) //FinalPath nodes > 1?
-        {
-            Gizmos.color = finalPathColor;
-            for (int i = 0; i < FinalPath.Count - 1; i++)
-            {
-                Gizmos.DrawLine(FinalPath[i].WorldPosition, FinalPath[i + 1].WorldPosition);
-                Debug.Log($"Node visited: ({FinalPath[i].WorldPosition.x}, {FinalPath[i].WorldPosition.z})"); //make sure Debug.Log ends once destination reached
-                //How to display gCost, fCost, and hCost in Debug.Log?
-            }
-        }
-        */
-        if (path == null || path.Count < 2)
-        {
-            Debug.LogError("Path not established");
-            return;
-        }
-        if (path != null)
-        {
-            Gizmos.color = finalPathColor;
-            for (int i = 0; i < path.Count - 1; i++)
-            {
-                Gizmos.DrawLine(path[i].WorldPosition, path[i + 1].WorldPosition);
-                Debug.Log($"Node visited: ({path[i].WorldPosition.x}, {path[i].WorldPosition.z}), gCost: {path[i].gCost}, hCost: {path[i].hCost}, fCost: {path[i].fCost}");
-            }
-        }
-    }
-
     // Start is called before the first frame update
     void Start()
     {
-        gridManager.StartNode = gridManager.gridNodes[Random.Range(0, gridManager.GridSettings.GridSizeX), Random.Range(0, gridManager.GridSettings.GridSizeY)];
-        //gameManager.startNode; 
-        gridManager.EndNode = gridManager.gridNodes[Random.Range(0, gridManager.GridSettings.GridSizeX), Random.Range(0, gridManager.GridSettings.GridSizeY)];
-        //gameManager.endNode; 
-        path = FindPath(gridManager, gridManager.StartNode, gridManager.EndNode, 10, 10);
+
     }
 
     // Update is called once per frame

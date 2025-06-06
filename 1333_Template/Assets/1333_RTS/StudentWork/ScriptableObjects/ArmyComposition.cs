@@ -9,7 +9,7 @@ public class ArmyComposition : ScriptableObject
 
     public class UnitEntry
     {
-        public UnitTypePrefab unitTypePrefab;
+        public UnitType unitType;
         public int count = 1;
     }
     public List<UnitEntry> entries = new List<UnitEntry>();

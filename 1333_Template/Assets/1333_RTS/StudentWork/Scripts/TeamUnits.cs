@@ -2,10 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class UnitTypePrefab : MonoBehaviour
+public class AvailableTeamUnits : ScriptableObject
 {
-    public UnitType unitType;
-    public GameObject prefab;
+    public List<UnitType> AvailableUnits = new List<UnitType>();
     // Start is called before the first frame update
     void Start()
     {

@@ -161,25 +161,7 @@ public class PathFinder : MonoBehaviour
 
     public List<GridNode> FindPath(GridNode start, GridNode end, int unitWidth = 1, int unitHeight = 1)
     {
-        List<GridNode> path;
-        switch (pathfindingToUse)
-        {
-            case PathFindingStyle.Dijkstra: //if Dijkstra is selected
-
-                    path = dijkstraPathfinder.FindPath(gridManager, start, end, unitWidth, unitHeight);
-                break;
-            case PathFindingStyle.AStar:
-                    path = aStarPathfinder.FindPath(gridManager, start, end, unitWidth, unitHeight);
-                break;
-            default:
-                path = new List<GridNode>();
-                break;
-        }
-        if(drawLastPathGizmos)
-        {
-            lastPath = path;
-        }
-        return path;
+        return aStarPathfinder.FindPath(gridManager, start, end, unitWidth, unitHeight);
     }
 
 }

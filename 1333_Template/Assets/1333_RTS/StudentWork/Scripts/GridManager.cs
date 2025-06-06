@@ -29,14 +29,17 @@ public class GridManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        StartNode = gridNodes[Random.Range(0, GridSettings.GridSizeX), Random.Range(0, GridSettings.GridSizeY)]; 
-        EndNode = gridNodes[Random.Range(0, GridSettings.GridSizeX), Random.Range(0, GridSettings.GridSizeY)];
-        aStarPathfinder.FindPath(this, StartNode, EndNode, 10, 10);
-        FinalPath = aStarPathfinder.FindPath(this, StartNode, EndNode, 10, 10);
-        for (int i = 0; i < FinalPath.Count; i++)
+        if (gridNodes != null)
         {
-            Debug.Log($"Node visited: ({FinalPath[i].WorldPosition.x}, {FinalPath[i].WorldPosition.z}), gCost: {FinalPath[i].gCost}, hCost: {FinalPath[i].hCost}, fCost: {FinalPath[i].fCost}");
+            PopulateDebugList();
         }
+        //StartNode = gridNodes[Random.Range(0, GridSettings.GridSizeX), Random.Range(0, GridSettings.GridSizeY)]; 
+        StartNode = gridNodes[1,1]; 
+        //EndNode = gridNodes[Random.Range(0, GridSettings.GridSizeX), Random.Range(0, GridSettings.GridSizeY)];
+        EndNode = gridNodes[8,8];
+        //aStarPathfinder.FindPath(this, StartNode, EndNode, 10, 10);
+        //FinalPath = aStarPathfinder.FindPath(this, StartNode, EndNode, 10, 10);
+        CountNodesVisited(FinalPath);
     }
 
     // Update is called once per frame
@@ -60,6 +63,14 @@ public class GridManager : MonoBehaviour
         */
     }
 
+    private void CountNodesVisited(List<GridNode> FinalPath)
+    {
+        for (int i = 0; i < FinalPath.Count; i++)
+        {
+            Debug.Log($"Node visited: ({FinalPath[i].WorldPosition.x}, {FinalPath[i].WorldPosition.z}), gCost: {FinalPath[i].gCost}, hCost: {FinalPath[i].hCost}, fCost: {FinalPath[i].fCost}");
+        }
+    }
+
     public void InitializeGrid()
     {
         gridNodes = new GridNode[gridSettings.GridSizeX, gridSettings.GridSizeY];
@@ -70,7 +81,8 @@ public class GridManager : MonoBehaviour
                 Vector3 worldPos = gridSettings.UseXZPlane
                     ? new Vector3(x, 0, y) * gridSettings.NodeSize
                     : new Vector3(x, y, 0) * gridSettings.NodeSize;
-                TerrainType terrainType = TerrainTypes[Random.Range(0, TerrainTypes.Count)];
+                //TerrainType terrainType = TerrainTypes[Random.Range(0, TerrainTypes.Count)];
+                TerrainType terrainType = TerrainTypes[0];
 
                 GridNode node = new GridNode
                 {
@@ -88,6 +100,7 @@ public class GridManager : MonoBehaviour
         }
         IsInitialized = true;
         DoSomethingOnEachNode(OnValidate);
+        PopulateDebugList();
     }
 
     private void PopulateDebugList()

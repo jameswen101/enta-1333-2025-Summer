@@ -2,11 +2,12 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class UnitTypePrefab : MonoBehaviour
+public class TeamArmies : MonoBehaviour
 {
-    public UnitType unitType;
-    public GameObject prefab;
     // Start is called before the first frame update
+    public List<CurrentTeamArmyManager> Teams = new();
+
+
     void Start()
     {
         
