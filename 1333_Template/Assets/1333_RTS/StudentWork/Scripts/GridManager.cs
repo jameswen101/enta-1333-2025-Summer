@@ -1,6 +1,6 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEditor;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 public class GridManager : MonoBehaviour
@@ -8,72 +8,55 @@ public class GridManager : MonoBehaviour
     [SerializeField] private GridSettings gridSettings;
     public GridSettings GridSettings => gridSettings;
 
-    //private
-    public GridNode[,] gridNodes;
-    //[SerializeField] private
-    public List<GridNode> AllNodes = new();
-    public PathFinder pathFinder;
-    public GridNode StartNode;
-    public GridNode EndNode;
-    //add a star pathfinder here
-    public AStarPathfinder aStarPathfinder;
-    public List<GridNode> FinalPath = new();
-    public GameManager gameManager;
+    private GridNode[,] gridNodes;
+    public GridNode[,] GridNodes => gridNodes;
 
     public bool IsInitialized { get; private set; } = false;
 
+    public AStarPathfinder aStarPathfinder;
+    public PathFinder pathFinder; // in case you still want older pathfinder
+
     [SerializeField] private Color finalPathColor = Color.cyan;
+    [SerializeField] private List<TerrainType> terrainTypes = new List<TerrainType>();
 
-    public List<TerrainType> TerrainTypes = new List<TerrainType>();
+    public GridNode StartNode { get; private set; }
+    public GridNode EndNode { get; private set; }
 
-    // Start is called before the first frame update
-    void Start()
+    private List<GridNode> finalPath = new();  // private field now, cleaner
+    public List<GridNode> FinalPath => finalPath;
+
+
+    private void Start()
     {
-        if (gridNodes != null)
-        {
-            PopulateDebugList();
-        }
-        //StartNode = gridNodes[Random.Range(0, GridSettings.GridSizeX), Random.Range(0, GridSettings.GridSizeY)]; 
-        StartNode = gridNodes[1,1]; 
-        //EndNode = gridNodes[Random.Range(0, GridSettings.GridSizeX), Random.Range(0, GridSettings.GridSizeY)];
-        EndNode = gridNodes[8,8];
-        //aStarPathfinder.FindPath(this, StartNode, EndNode, 10, 10);
-        //FinalPath = aStarPathfinder.FindPath(this, StartNode, EndNode, 10, 10);
-        CountNodesVisited(FinalPath);
+        InitializeGrid();
+
+        // TEMP hardcoded start/end for testing, you can replace this later
+        StartNode = gridNodes[1, 1];
+        EndNode = gridNodes[8, 8];
+        Vector2Int startIndex = GridNodeToIndex(StartNode);
+        Vector2Int endIndex = GridNodeToIndex(EndNode);
+
+
+        // Call your AStar after full grid is ready:
+        if (aStarPathfinder != null)
+            finalPath = aStarPathfinder.FindPath(StartNode.WorldPosition, EndNode.WorldPosition);
     }
 
-    // Update is called once per frame
-    void Update()
+    public Vector2Int GridNodeToIndex(GridNode node)
     {
-        /*
-        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        mouseWorldPos.y = 0f; // Set y to 0 
+        int x = Mathf.RoundToInt(node.WorldPosition.x / GridSettings.NodeSize);
+        int y = GridSettings.UseXZPlane
+            ? Mathf.RoundToInt(node.WorldPosition.z / GridSettings.NodeSize)
+            : Mathf.RoundToInt(node.WorldPosition.y / GridSettings.NodeSize);
 
-        //whatever node player clicks on will become EndNode
-        if (Input.GetMouseButtonDown(0))
-        {
-            foreach (GridNode node in gridNodes)
-            {
-                if (node.WorldPosition == mouseWorldPos)
-                {
-                    EndNode = node;
-                }
-            }
-        }
-        */
+        return new Vector2Int(x, y);
     }
 
-    private void CountNodesVisited(List<GridNode> FinalPath)
-    {
-        for (int i = 0; i < FinalPath.Count; i++)
-        {
-            Debug.Log($"Node visited: ({FinalPath[i].WorldPosition.x}, {FinalPath[i].WorldPosition.z}), gCost: {FinalPath[i].gCost}, hCost: {FinalPath[i].hCost}, fCost: {FinalPath[i].fCost}");
-        }
-    }
 
     public void InitializeGrid()
     {
         gridNodes = new GridNode[gridSettings.GridSizeX, gridSettings.GridSizeY];
+
         for (int x = 0; x < gridSettings.GridSizeX; x++)
         {
             for (int y = 0; y < gridSettings.GridSizeY; y++)
@@ -81,120 +64,121 @@ public class GridManager : MonoBehaviour
                 Vector3 worldPos = gridSettings.UseXZPlane
                     ? new Vector3(x, 0, y) * gridSettings.NodeSize
                     : new Vector3(x, y, 0) * gridSettings.NodeSize;
-                //TerrainType terrainType = TerrainTypes[Random.Range(0, TerrainTypes.Count)];
-                TerrainType terrainType = TerrainTypes[0];
 
-                GridNode node = new GridNode
+                // You can randomize or hardcode terrain type
+                TerrainType terrain = terrainTypes.Count > 0 ? terrainTypes[0] : new TerrainType();
+
+                gridNodes[x, y] = new GridNode
                 {
-                    Name = $"Cell_{(x + gridSettings.GridSizeX) * x + y}",
+                    Name = $"Cell_{x}_{y}",
                     WorldPosition = worldPos,
-
-                    Walkable = terrainType.walkable,
-                    Weight = terrainType.movementCost,
-                    TerrainType = terrainType,
-                    GizmoColor = terrainType.gizmoColor,
-
+                    Walkable = terrain.walkable,
+                    Weight = terrain.movementCost,
+                    TerrainType = terrain,
+                    GizmoColor = terrain.gizmoColor
                 };
-                gridNodes[x, y] = node;
             }
         }
         IsInitialized = true;
-        DoSomethingOnEachNode(OnValidate);
-        PopulateDebugList();
-    }
-
-    private void PopulateDebugList()
-    {
-        AllNodes.Clear();
-        for (int x = 0;x < gridSettings.GridSizeX;x++)
-        {
-            for (int y = 0;y < gridSettings.GridSizeY;y++)
-            {
-                GridNode node = gridNodes[x, y];
-                AllNodes.Add(new GridNode
-                {
-                    Name = $"Cell_{x}_{y}",
-                    WorldPosition = node.WorldPosition,
-                    Walkable = node.Walkable,
-                    Weight = node.Weight
-                });
-            }
-        }
     }
 
     public GridNode GetNode(int x, int y)
     {
-        if (x < 0 || x>= gridSettings.GridSizeX || y < 0 || y>= gridSettings.GridSizeY)
+        if (x < 0 || x >= gridSettings.GridSizeX || y < 0 || y >= gridSettings.GridSizeY)
             throw new System.IndexOutOfRangeException("Grid node indices out of range.");
         return gridNodes[x, y];
     }
+
     public void SetWalkable(int x, int y, bool walkable)
     {
-        gridNodes[x,y].Walkable = walkable;
-    }
-    private void OnDrawGizmos()
-    {
-        if (gridNodes == null || gridSettings == null) return;
-        Gizmos.color = Color.green; //set this to color of respective terrain
-
-        for (int x = 0; x < gridSettings.GridSizeX; x++)
-        {
-            for (int y = 0; y < gridSettings.GridSizeY; y++)
-            {
-                GridNode node = gridNodes[x,y];
-                Gizmos.color = node.Walkable ? Color.green : Color.red;
-                Gizmos.DrawWireCube(node.WorldPosition, Vector3.one * gridSettings.NodeSize * 0.9f);
-            }
-        }
-        // Draw final path
-        //Add A*-calculated path here?
-        //List<Vector3> FinalPath = pathFinder.CalculatePath(StartNode, EndNode);
-        //10, 10?
-        
-        //should calculate path again with new A* algorithm?
+        gridNodes[x, y].Walkable = walkable;
     }
 
     public GridNode GetNodeFromWorldPosition(Vector3 position)
     {
-        int x = GridSettings.UseXZPlane ? Mathf.RoundToInt(f: position.x / GridSettings.NodeSize) : Mathf.RoundToInt(f: position.x / GridSettings.NodeSize);
-        int y = GridSettings.UseXZPlane ? Mathf.RoundToInt(f: position.z / GridSettings.NodeSize) : Mathf.RoundToInt(f: position.y / GridSettings.NodeSize);
-        x = Mathf.Clamp(x, 0, GridSettings.GridSizeX - 1);
-        y = Mathf.Clamp(y, 0, GridSettings.GridSizeY - 1);
+        int x = Mathf.RoundToInt(position.x / gridSettings.NodeSize);
+        int y = gridSettings.UseXZPlane
+            ? Mathf.RoundToInt(position.z / gridSettings.NodeSize)
+            : Mathf.RoundToInt(position.y / gridSettings.NodeSize);
+        x = Mathf.Clamp(x, 0, gridSettings.GridSizeX - 1);
+        y = Mathf.Clamp(y, 0, gridSettings.GridSizeY - 1);
         return GetNode(x, y);
     }
 
-    private int count;
-    private void OnValidate()
+    public void SetFinalPath(List<GridNode> path)
     {
-        count++;
-        Debug.Log("Validated " + count);
+        finalPath = path;
     }
 
-
-    private void DoSomethingOnEachNode(System.Action thingToDo)
+    private void OnDrawGizmos()
     {
+        if (gridNodes == null || gridSettings == null) return;
+
+        // Draw grid
         for (int x = 0; x < gridSettings.GridSizeX; x++)
         {
-            for(int y = 0;y < gridSettings.GridSizeY;y++)
+            for (int y = 0; y < gridSettings.GridSizeY; y++)
             {
-                thingToDo?.Invoke();
+                GridNode node = gridNodes[x, y];
+                Gizmos.color = node.Walkable ? Color.green : Color.red;
+                Gizmos.DrawWireCube(node.WorldPosition, Vector3.one * gridSettings.NodeSize * 0.9f);
+            }
+        }
+
+        // Draw final path
+        if (finalPath != null && finalPath.Count > 1)
+        {
+            Gizmos.color = finalPathColor;
+            for (int i = 0; i < finalPath.Count - 1; i++)
+            {
+                Gizmos.DrawLine(finalPath[i].WorldPosition, finalPath[i + 1].WorldPosition);
             }
         }
     }
 
+    public Vector2Int GetGridIndexFromWorld(Vector3 worldPos)
+{
+    int x = Mathf.RoundToInt(worldPos.x / GridSettings.NodeSize);
+    int y = Mathf.RoundToInt(worldPos.z / GridSettings.NodeSize);
+    return new Vector2Int(x, y);
+}
+
+public bool IsRegionWalkable(int x, int y, int width, int height)
+{
+    for (int dx = 0; dx < width; dx++)
+    {
+        for (int dy = 0; dy < height; dy++)
+        {
+            if (!gridNodes[x + dx, y + dy].Walkable)
+                return false;
+        }
+    }
+    return true;
+}
+
+public void SetRegionWalkable(int x, int y, int width, int height, bool walkable)
+{
+    for (int dx = 0; dx < width; dx++)
+    {
+        for (int dy = 0; dy < height; dy++)
+        {
+            gridNodes[x + dx, y + dy].Walkable = walkable;
+        }
+    }
+}
+
+    // Custom editor button (optional quality of life for debugging)
     [CustomEditor(typeof(GridManager))]
     public class GridManagerEditor : Editor
     {
         public override void OnInspectorGUI()
         {
             DrawDefaultInspector();
+
             GridManager grid = (GridManager)target;
-            if (grid.IsInitialized)
+            if (GUILayout.Button("Initialize Grid"))
             {
-                if (GUILayout.Button("Refresh Grid Debug View"))
-                {
-                    grid.PopulateDebugList();
-                }
+                grid.InitializeGrid();
             }
         }
     }

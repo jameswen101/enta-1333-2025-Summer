@@ -161,7 +161,7 @@ public class PathFinder : MonoBehaviour
 
     public List<GridNode> FindPath(GridNode start, GridNode end, int unitWidth = 1, int unitHeight = 1)
     {
-        return aStarPathfinder.FindPath(gridManager, start, end, unitWidth, unitHeight);
+        return aStarPathfinder.FindPath(start.WorldPosition, end.WorldPosition);
     }
 
 }

@@ -92,13 +92,13 @@ public class GameManager : MonoBehaviour
         Debug.Log($"New EndNode: ({gridManager.EndNode.WorldPosition.x}, {gridManager.EndNode.WorldPosition.z})");
         //call findpath
         testUnit.transform.position = startMarker.position;
-        testUnit.SetTarget(endMarker.position);
+        testUnit.SetDestination(endMarker.position);
         //TestPathfinderNoUnits();
     }
 
     private void TestPathfinderNoUnits() //no way to debug
     {
-        var path = aStarPathfinder.FindPath(gridManager, startMarker.position, endMarker.position, 10, 10);
+        var path = aStarPathfinder.FindPath(startMarker.position, endMarker.position);
         string msg = $"Path found: {path.Count} steps. Start at {startMarker.position}, end at {endMarker.position}.";
         foreach (GridNode node in path)
         {

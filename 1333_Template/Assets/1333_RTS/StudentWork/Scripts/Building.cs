@@ -2,12 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class TeamArmies : MonoBehaviour
+public class Building : MonoBehaviour
 {
     // Start is called before the first frame update
-    public List<CurrentTeamArmyManager> Teams = new();
-    public Color TeamColor;
-    public string TeamName;
     void Start()
     {
         

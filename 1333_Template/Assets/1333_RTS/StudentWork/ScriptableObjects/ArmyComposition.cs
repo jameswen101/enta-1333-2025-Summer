@@ -10,7 +10,8 @@ public class ArmyComposition : ScriptableObject
     public class UnitEntry
     {
         public UnitType unitType;
-        public int count = 1;
+        public UnitTypePrefab unitTypePrefab;
+        public int count;
     }
     public List<UnitEntry> entries = new List<UnitEntry>();
     // Start is called before the first frame update

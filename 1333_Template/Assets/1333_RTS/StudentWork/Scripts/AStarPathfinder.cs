@@ -1,154 +1,117 @@
-using System.Collections;
 using System.Collections.Generic;
-//using NUnit;
-//using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
-public class AStarPathfinder : PathfindingAlgorithm
+public class AStarPathfinder : MonoBehaviour
 {
-    //public List<GridNode> FinalPath = new List<GridNode>();
     [SerializeField] private GridManager gridManager;
-    [SerializeField] private Color finalPathColor = Color.cyan;
-    [SerializeField] private GameManager gameManager;
-    public override List<GridNode> FindPath(GridManager gridManager, GridNode start, GridNode end, int unitWidth, int unitHeight)
+
+    public List<GridNode> FindPath(Vector3 startWorldPos, Vector3 endWorldPos)
     {
-        //nodes to explore
-        List<GridNode> openSet = new List<GridNode>(); //should we also have a closedSet?
-        List<GridNode> closedSet = new List<GridNode>();
-        Dictionary<GridNode, int> costSoFar = new Dictionary<GridNode, int>(); //gCost (starts at 0)
-        Dictionary<GridNode, int> estimatedTotalCost = new Dictionary<GridNode, int>(); //fCost; costSoFar + Heuristic = estimatedTotalCost?
-        Dictionary<GridNode, GridNode> cameFrom = new Dictionary<GridNode, GridNode>(); //path reconstruction
-        openSet.Add(start);
-        costSoFar[start] = 0;
-        estimatedTotalCost[start] = Heuristic(start, end);
-        cameFrom[start] = start; //start node has no parent or node preceding it
+        // Convert world positions to GridNodes
+        GridNode startNode = gridManager.GetNodeFromWorldPosition(startWorldPos);
+        GridNode endNode = gridManager.GetNodeFromWorldPosition(endWorldPos);
 
-        Debug.Log($"Finding path from {start} to {end}");
-
-        while (openSet.Count > 0) 
+        // Safety check
+        if (startNode.Equals(null) || endNode.Equals(null) || !startNode.Walkable || !endNode.Walkable)
         {
-            //find code with lowest f-score
-            GridNode current = openSet[0];
-            foreach (GridNode node in openSet) //does openSet only have 1 node?
-            {
-                if (estimatedTotalCost[node] < estimatedTotalCost[current] ||
-   (estimatedTotalCost[node] == estimatedTotalCost[current] &&
-    Heuristic(node, end) < Heuristic(current, end)))
-                {
-                    current = node;
-                }
-            }
-            if (current.Equals(end)) //when end node reached, stop searching
-            {
-                break;
-            }
-            openSet.Remove(current); //remove current node from nodes to explore
-            if (closedSet.Contains(current)) continue;
-            closedSet.Add(current);
-            //get neighbors
-            var neighbors = GetNeighbors(gridManager, current);
-                for (int i = 0; i < GetNeighbors(gridManager, current).Count; i++)
-            {
-                GridNode neighbor = neighbors[i];
+            Debug.LogWarning("Invalid start or end node.");
+            return null;
+        }
 
-                bool isWalkable = IsAreaWalkable(gridManager, neighbor, unitWidth, unitHeight);
-                if (!isWalkable) //IsAreaWalkable is a bool function //misinterprets whether node is walkable or not
+        // A* data structures
+        var openSet = new List<GridNode> { startNode };
+        var closedSet = new HashSet<GridNode>();
+        var cameFrom = new Dictionary<GridNode, GridNode>();
+        var gScore = new Dictionary<GridNode, int> { [startNode] = 0 };
+        var fScore = new Dictionary<GridNode, int> { [startNode] = Heuristic(startNode, endNode) };
+
+        while (openSet.Count > 0)
+        {
+            // Select node with lowest fScore
+            GridNode current = GetLowestFScoreNode(openSet, fScore);
+
+            if (current.Equals(endNode))
+            {
+                return ReconstructPath(cameFrom, current);
+            }
+
+            openSet.Remove(current);
+            closedSet.Add(current);
+
+            foreach (GridNode neighbor in GetNeighbors(current))
+            {
+                if (!neighbor.Walkable || closedSet.Contains(neighbor))
                     continue;
 
-                int newCost = costSoFar[current] + neighbor.Weight;
+                int tentativeGScore = gScore[current] + neighbor.Weight;
 
-                if (!costSoFar.ContainsKey(neighbor) || newCost < costSoFar[neighbor])
+                if (!gScore.ContainsKey(neighbor) || tentativeGScore < gScore[neighbor])
                 {
-                    costSoFar[neighbor] = newCost;
-                    estimatedTotalCost[neighbor] = newCost + Heuristic(neighbor, end); //fCost = gCost + hCost
                     cameFrom[neighbor] = current;
-                    neighbor.gCost = newCost;
-                    neighbor.hCost = Heuristic(neighbor, end);
+                    gScore[neighbor] = tentativeGScore;
+                    fScore[neighbor] = tentativeGScore + Heuristic(neighbor, endNode);
+
                     if (!openSet.Contains(neighbor))
                         openSet.Add(neighbor);
                 }
-
             }
         }
 
-        List<GridNode> path = new List<GridNode>(); //Makes new list every time, otherwise old data can't be cleared
-        GridNode pathNode = end;
-        if (!cameFrom.ContainsKey(end))
-            return path;
-        while (!pathNode.Equals(start)) //not the 1st node
+        // No valid path found
+        return null;
+    }
+
+    private GridNode GetLowestFScoreNode(List<GridNode> openSet, Dictionary<GridNode, int> fScore)
+    {
+        GridNode lowestNode = openSet[0];
+        int lowestScore = fScore.ContainsKey(lowestNode) ? fScore[lowestNode] : int.MaxValue;
+
+        foreach (GridNode node in openSet)
         {
-            path.Add(pathNode); 
-            pathNode = cameFrom[pathNode]; //key not found
-        }
-        path.Add(start);
-        path.Reverse();
-        return path;
-    }
-
-    public override List<GridNode> FindPath(GridManager gridManager, Vector3 start, Vector3 end, int unitWidth, int unitHeight)
-    {
-        GridNode startNode = FindClosestNode(gridManager, start);
-        GridNode endNode = FindClosestNode(gridManager, end);
-        return FindPath(gridManager, startNode, endNode, unitWidth, unitHeight);
-
-    }
-
-    private List<GridNode> GetNeighbors(GridManager gridManager, GridNode node)
-    {
-        List<GridNode> neighbors = new List<GridNode>();
-        int gridSizeX = gridManager.GridSettings.GridSizeX;
-        int gridSizeY = gridManager.GridSettings.GridSizeY;
-        float nodeSize = gridManager.GridSettings.NodeSize;
-        int nodeX = Mathf.RoundToInt(node.WorldPosition.x / nodeSize);
-        int nodeY = Mathf.RoundToInt(node.WorldPosition.z / nodeSize);
-        if (nodeY + 1 < gridSizeY) neighbors.Add(gridManager.GetNode(nodeX, nodeY + 1));
-        if (nodeY - 1 >= 0) neighbors.Add(gridManager.GetNode(nodeX, nodeY - 1));
-        if (nodeX + 1 < gridSizeX) neighbors.Add(gridManager.GetNode(nodeX + 1, nodeY));
-        if (nodeX - 1 >= 0) neighbors.Add(gridManager.GetNode(nodeX - 1, nodeY));
-        return neighbors;
-    }
-
-    private bool IsAreaWalkable(GridManager grid, GridNode node, int width, int height)
-    {
-        float nodeSize = grid.GridSettings.NodeSize;
-        int x = Mathf.RoundToInt(node.WorldPosition.x / nodeSize);
-        int y = Mathf.RoundToInt(node.WorldPosition.z / nodeSize);
-        for (int dx = 0; dx < width; dx++)
-        {
-            for (int dy = 0; dy < height; dy++)
+            int score = fScore.ContainsKey(node) ? fScore[node] : int.MaxValue;
+            if (score < lowestScore)
             {
-                if (x + dx < 0 || x + dx >= grid.GridSettings.GridSizeX || y + dy < 0 || y + dy >= grid.GridSettings.GridSizeY)
-                    return false;
-                if (!grid.GetNode(x + dx, y + dy).Walkable)
-                    return false;
+                lowestNode = node;
+                lowestScore = score;
             }
         }
-        return true;
+        return lowestNode;
     }
 
-    private GridNode FindClosestNode(GridManager gridManager, Vector3 position)
+    private List<GridNode> ReconstructPath(Dictionary<GridNode, GridNode> cameFrom, GridNode current)
     {
-        int x = Mathf.RoundToInt(position.x / gridManager.GridSettings.NodeSize);
-        int y = Mathf.RoundToInt(position.z / gridManager.GridSettings.NodeSize);
-        return gridManager.GetNode(x, y);
+        List<GridNode> path = new();
+        while (cameFrom.ContainsKey(current))
+        {
+            path.Insert(0, current);
+            current = cameFrom[current];
+        }
+        path.Insert(0, current); // Insert start node
+        return path;
     }
 
     private int Heuristic(GridNode a, GridNode b)
     {
-        float dx = Mathf.Abs(a.WorldPosition.x - b.WorldPosition.x);
-        float dz = Mathf.Abs(a.WorldPosition.z - b.WorldPosition.z);
-        return Mathf.RoundToInt(dx + dz);
+        int dx = Mathf.RoundToInt(Mathf.Abs(a.WorldPosition.x - b.WorldPosition.x));
+        int dz = Mathf.RoundToInt(Mathf.Abs(a.WorldPosition.z - b.WorldPosition.z));
+        return dx + dz;  // Manhattan distance for grid movement
     }
 
-    // Start is called before the first frame update
-    void Start()
+    private List<GridNode> GetNeighbors(GridNode node)
     {
+        List<GridNode> neighbors = new();
+        int gridSizeX = gridManager.GridSettings.GridSizeX;
+        int gridSizeY = gridManager.GridSettings.GridSizeY;
+        float nodeSize = gridManager.GridSettings.NodeSize;
 
-    }
+        int nodeX = Mathf.RoundToInt(node.WorldPosition.x / nodeSize);
+        int nodeY = Mathf.RoundToInt(node.WorldPosition.z / nodeSize);
 
-    // Update is called once per frame
-    void Update()
-    {
-        
+        if (nodeY + 1 < gridSizeY) neighbors.Add(gridManager.GetNode(nodeX, nodeY + 1));
+        if (nodeY - 1 >= 0) neighbors.Add(gridManager.GetNode(nodeX, nodeY - 1));
+        if (nodeX + 1 < gridSizeX) neighbors.Add(gridManager.GetNode(nodeX + 1, nodeY));
+        if (nodeX - 1 >= 0) neighbors.Add(gridManager.GetNode(nodeX - 1, nodeY));
+
+        return neighbors;
     }
 }
